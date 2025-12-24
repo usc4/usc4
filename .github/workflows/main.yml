@@ -11,7 +11,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Build IPA
       run: |
@@ -36,8 +36,9 @@ jobs:
         zip -r usc4.ipa Payload
         
     - name: Upload IPA
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: usc4-IPA
         path: usc4.ipa
         retention-days: 30
+
