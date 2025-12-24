@@ -22,8 +22,25 @@ jobs:
         echo "Xcode project check:"
         ls -la usc4.xcodeproj/ || echo "Project not found"
         
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
     - name: Build IPA
       run: |
+        # Check Xcode version
+        xcodebuild -version
+        
+        # List project contents
+        echo "Project structure:"
+        ls -la usc4.xcodeproj/
+        
+        # Try to list schemes
+        echo "Available schemes:"
+        xcodebuild -list -project usc4.xcodeproj || echo "Failed to list schemes"
+        
+        # Build the app
         xcodebuild -project usc4.xcodeproj \
           -scheme usc4 \
           -configuration Release \
@@ -33,7 +50,7 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           -derivedDataPath build \
-          -allowProvisioningUpdates
+          build
         
         echo "Build completed. Looking for app bundle..."
         find build -name "*.app" -type d
@@ -42,8 +59,8 @@ jobs:
         APP_PATH=$(find build -name "usc4.app" -type d | head -n 1)
         if [ -z "$APP_PATH" ]; then
           echo "Error: Could not find .app bundle"
-          echo "Searching in build directory:"
-          find build -type d -name "*app*"
+          echo "Build directory contents:"
+          find build -type d | head -20
           exit 1
         fi
         
