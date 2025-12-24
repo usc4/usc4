@@ -30,18 +30,38 @@ jobs:
     - name: Build IPA
       run: |
         # Check Xcode version
-        xcodebuild -version
+        xcodebuild -version || echo "xcodebuild not found"
         
-        # List project contents
-        echo "Project structure:"
-        ls -la usc4.xcodeproj/
+        # Verify project exists
+        if [ ! -d "usc4.xcodeproj" ]; then
+          echo "Error: usc4.xcodeproj not found!"
+          echo "Current directory contents:"
+          ls -la
+          exit 1
+        fi
         
-        # Try to list schemes
+        # Check if usc4 folder exists
+        if [ ! -d "usc4" ]; then
+          echo "Error: usc4 source folder not found!"
+          ls -la
+          exit 1
+        fi
+        
+        # List schemes
         echo "Available schemes:"
-        xcodebuild -list -project usc4.xcodeproj || echo "Failed to list schemes"
+        xcodebuild -list -project usc4.xcodeproj || {
+          echo "Failed to list schemes. Checking project file..."
+          ls -la usc4.xcodeproj/
+          exit 1
+        }
         
-        # Build the app
-        xcodebuild -project usc4.xcodeproj \
+        # Clean build folder
+        rm -rf build
+        
+        # Build the app (without -quiet to see errors)
+        echo "Starting build..."
+        xcodebuild clean build \
+          -project usc4.xcodeproj \
           -scheme usc4 \
           -configuration Release \
           -sdk iphoneos \
@@ -50,24 +70,32 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           -derivedDataPath build \
-          build
+          2>&1 | tee build.log || {
+          echo "Build failed! Last 50 lines of build.log:"
+          tail -50 build.log || echo "No build.log found"
+          exit 1
+        }
         
         echo "Build completed. Looking for app bundle..."
-        find build -name "*.app" -type d
-        
-        mkdir -p Payload
         APP_PATH=$(find build -name "usc4.app" -type d | head -n 1)
+        
         if [ -z "$APP_PATH" ]; then
           echo "Error: Could not find .app bundle"
-          echo "Build directory contents:"
-          find build -type d | head -20
+          echo "Searching for any .app files:"
+          find build -name "*.app" -type d || echo "No .app files found"
+          echo "Build directory structure:"
+          find build -type d | head -30
+          echo "Build log (last 100 lines):"
+          tail -100 build.log || echo "No build.log"
           exit 1
         fi
         
         echo "Found app at: $APP_PATH"
+        mkdir -p Payload
         cp -r "$APP_PATH" Payload/
         zip -r usc4.ipa Payload
         echo "IPA created successfully!"
+        ls -lh usc4.ipa
         
     - name: Upload IPA
       uses: actions/upload-artifact@v4
