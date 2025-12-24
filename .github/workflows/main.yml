@@ -1,0 +1,43 @@
+name: Build usc4 IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Build IPA
+      run: |
+        xcodebuild -project usc4.xcodeproj \
+          -scheme usc4 \
+          -configuration Release \
+          -sdk iphoneos \
+          -arch arm64 \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          -derivedDataPath build
+        
+        mkdir -p Payload
+        APP_PATH=$(find build -name "usc4.app" -type d | head -n 1)
+        if [ -z "$APP_PATH" ]; then
+          echo "Error: Could not find .app bundle"
+          exit 1
+        fi
+        
+        cp -r "$APP_PATH" Payload/
+        zip -r usc4.ipa Payload
+        
+    - name: Upload IPA
+      uses: actions/upload-artifact@v3
+      with:
+        name: usc4-IPA
+        path: usc4.ipa
+        retention-days: 30
