@@ -13,6 +13,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: List files
+      run: |
+        echo "Current directory:"
+        pwd
+        echo "Files in directory:"
+        ls -la
+        echo "Xcode project check:"
+        ls -la usc4.xcodeproj/ || echo "Project not found"
+        
     - name: Build IPA
       run: |
         xcodebuild -project usc4.xcodeproj \
@@ -23,17 +32,25 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          -derivedDataPath build
+          -derivedDataPath build \
+          -allowProvisioningUpdates
+        
+        echo "Build completed. Looking for app bundle..."
+        find build -name "*.app" -type d
         
         mkdir -p Payload
         APP_PATH=$(find build -name "usc4.app" -type d | head -n 1)
         if [ -z "$APP_PATH" ]; then
           echo "Error: Could not find .app bundle"
+          echo "Searching in build directory:"
+          find build -type d -name "*app*"
           exit 1
         fi
         
+        echo "Found app at: $APP_PATH"
         cp -r "$APP_PATH" Payload/
         zip -r usc4.ipa Payload
+        echo "IPA created successfully!"
         
     - name: Upload IPA
       uses: actions/upload-artifact@v4
